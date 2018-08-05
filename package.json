@@ -1,0 +1,8 @@
+{
+  "name": "qrsocket",
+  "version": "1.0.0",
+  "description": "QR code-based data exchange library",
+  "main": "js/index.js",
+  "author": "zlumer",
+  "license": "MIT"
+}
