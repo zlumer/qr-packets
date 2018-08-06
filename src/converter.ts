@@ -21,13 +21,13 @@ function mergeArrays(...arrays: Uint8Array[]): Uint8Array
 	arrays.forEach(left => (result.set(left, i), i += left.byteLength))
 	return result
 }
-function bhash(data: Uint8Array)
+export function bhash(data: Uint8Array)
 {
 	let hash = sha3_256.create()
 	hash.update(data)
 	return new Uint8Array(hash.arrayBuffer())
 }
-function bhash8(data: Uint8Array)
+export function bhash8(data: Uint8Array)
 {
 	return bhash(data).slice(0, 8)
 }
@@ -178,7 +178,10 @@ function assertHash(data: Uint8Array, hash: Uint8Array)
 function extractData(msg: string): Uint8Array
 {
 	assertLength(msg, 6)
-	return toByteArray(msg.substr(5))
+	let str = msg.substr(5)
+	while (str.length % 4)
+		str += '='
+	return toByteArray(str)
 }
 function readNumber(arr: Uint8Array, idx: number): [number, number]
 {

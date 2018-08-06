@@ -28,9 +28,11 @@ function bhash(data) {
     hash.update(data);
     return new Uint8Array(hash.arrayBuffer());
 }
+exports.bhash = bhash;
 function bhash8(data) {
     return bhash(data).slice(0, 8);
 }
+exports.bhash8 = bhash8;
 function numberToBytes(num) {
     if (num < 253)
         return new Uint8Array([num]);
@@ -121,7 +123,10 @@ function assertHash(data, hash) {
 }
 function extractData(msg) {
     assertLength(msg, 6);
-    return base64_js_1.toByteArray(msg.substr(5));
+    var str = msg.substr(5);
+    while (str.length % 4)
+        str += '=';
+    return base64_js_1.toByteArray(str);
 }
 function readNumber(arr, idx) {
     var b1 = arr[idx];
