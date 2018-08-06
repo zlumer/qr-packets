@@ -1,7 +1,7 @@
 import { sha3_256 } from "js-sha3"
 import { fromByteArray, toByteArray } from "base64-js"
 
-enum MessageType
+export enum MessageType
 {
 	SINGLE = "s",
 	MESSAGE = "m",
@@ -61,6 +61,25 @@ export function multiMessage(chunks: Uint8Array[]): string[]
 		chunk)
 	)
 }
+export function splitPayload(payload: Uint8Array, CHUNK_LENGTH = 100): Uint8Array[]
+{
+	let payloads = []
+	for (let i = 0; i < payload.length; i++)
+	{
+		if ((i * CHUNK_LENGTH + CHUNK_LENGTH) > payload.length)
+			payloads.push(payload.subarray(i * CHUNK_LENGTH))
+		else
+			payloads.push(payload.subarray(i * CHUNK_LENGTH, CHUNK_LENGTH))
+	}
+	return payloads
+}
+export function autoMessage(payload: Uint8Array): string[]
+{
+	if (payload.length < 100)
+		return [singleMessage(payload)]
+	
+	return multiMessage(splitPayload(payload, 100))
+}
 export function deliveryConfirmation(mhash: Uint8Array, lastChunk: number, missed: number[]): string
 {
 	return constructMessage(MessageType.DELIVERY, mhash, numberToBytes(lastChunk), ...missed.map(numberToBytes))
@@ -69,12 +88,11 @@ export function channelOpen(channelId: Uint8Array): string
 {
 	return constructMessage(MessageType.CHANNEL, channelId, new Uint8Array([0, 0, 0]))
 }
-interface IChannel
+export interface IChannel
 {
 	id: Uint8Array
 	outidx: number
 	inidx: number
-	chunksQueue: Uint8Array[]
 }
 export function channelChunk(channel: IChannel, chunkidx: number, chunk: Uint8Array): string
 {
@@ -85,38 +103,34 @@ export function channelChunk(channel: IChannel, chunkidx: number, chunk: Uint8Ar
 		chunk
 	)
 }
-interface IAnyMessage
+interface IAnyMessage<T extends MessageType>
 {
 	protocol: "QRS"
 	version: 1
-	type: MessageType
+	type: T
 }
-interface ISingleMessage extends IAnyMessage
+export interface ISingleMessage extends IAnyMessage<MessageType.SINGLE>
 {
-	type: MessageType.SINGLE
 	hash: Uint8Array
 	payload: Uint8Array
 }
-interface IMessageChunk extends IAnyMessage
+export interface IMessageChunk extends IAnyMessage<MessageType.MESSAGE>
 {
-	type: MessageType.MESSAGE
 	hash: Uint8Array
 	count: number
 	idx: number
 	payload: Uint8Array
 }
-interface IChannelChunk extends IAnyMessage
+export interface IChannelChunk extends IAnyMessage<MessageType.CHANNEL>
 {
-	type: MessageType.CHANNEL
 	id: Uint8Array
 	outidx: number
 	inidx: number
 	chunkidx: number
 	payload: Uint8Array
 }
-interface IDeliveryConfirmation extends IAnyMessage
+export interface IDeliveryConfirmation extends IAnyMessage<MessageType.DELIVERY>
 {
-	type: MessageType.DELIVERY
 	hash: Uint8Array
 	lastChunk: number
 	missed: number[]
@@ -158,13 +172,8 @@ function assertDataLength(msg: string | ArrayLike<any>, datalen: number)
 function assertHash(data: Uint8Array, hash: Uint8Array)
 {
 	let sha = bhash8(data)
-	let msg = `hashes don't match! expected "${hash}", got "${sha}"`
-	if (sha.length != hash.length)
-		throw msg
-	
-	for (let i = 0; i < sha.length; i++)
-		if (sha[i] != hash[i])
-			throw msg
+	if (sha.toString() != hash.toString())
+		throw `hashes don't match! expected "${hash}", got "${sha}"`
 }
 function extractData(msg: string): Uint8Array
 {
@@ -191,8 +200,9 @@ function readNumberBytes(arr: Uint8Array, idx: number, length: number): number
 	}
 	return sum
 }
-export function decodeAnyMessage(msg: string): IAnyMessage
+export function decodeAnyMessage(msg: string): ISingleMessage | IMessageChunk | IChannelChunk | IDeliveryConfirmation
 {
+	assertProtocol(msg)
 	let type = getType(msg)
 	switch (type)
 	{

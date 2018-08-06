@@ -8,7 +8,7 @@ var MessageType;
     MessageType["MESSAGE"] = "m";
     MessageType["CHANNEL"] = "c";
     MessageType["DELIVERY"] = "d";
-})(MessageType || (MessageType = {}));
+})(MessageType = exports.MessageType || (exports.MessageType = {}));
 var MessageTypes = 'smcd'.split('');
 var PROTOCOL = "QRS";
 var VERSION = 1;
@@ -57,6 +57,24 @@ function multiMessage(chunks) {
     return chunks.map(function (chunk, idx) { return constructMessage(MessageType.MESSAGE, hash, numberToBytes(chunks.length), numberToBytes(idx), chunk); });
 }
 exports.multiMessage = multiMessage;
+function splitPayload(payload, CHUNK_LENGTH) {
+    if (CHUNK_LENGTH === void 0) { CHUNK_LENGTH = 100; }
+    var payloads = [];
+    for (var i = 0; i < payload.length; i++) {
+        if ((i * CHUNK_LENGTH + CHUNK_LENGTH) > payload.length)
+            payloads.push(payload.subarray(i * CHUNK_LENGTH));
+        else
+            payloads.push(payload.subarray(i * CHUNK_LENGTH, CHUNK_LENGTH));
+    }
+    return payloads;
+}
+exports.splitPayload = splitPayload;
+function autoMessage(payload) {
+    if (payload.length < 100)
+        return [singleMessage(payload)];
+    return multiMessage(splitPayload(payload, 100));
+}
+exports.autoMessage = autoMessage;
 function deliveryConfirmation(mhash, lastChunk, missed) {
     return constructMessage.apply(void 0, [MessageType.DELIVERY, mhash, numberToBytes(lastChunk)].concat(missed.map(numberToBytes)));
 }
@@ -98,12 +116,8 @@ function assertDataLength(msg, datalen) {
 }
 function assertHash(data, hash) {
     var sha = bhash8(data);
-    var msg = "hashes don't match! expected \"" + hash + "\", got \"" + sha + "\"";
-    if (sha.length != hash.length)
-        throw msg;
-    for (var i = 0; i < sha.length; i++)
-        if (sha[i] != hash[i])
-            throw msg;
+    if (sha.toString() != hash.toString())
+        throw "hashes don't match! expected \"" + hash + "\", got \"" + sha + "\"";
 }
 function extractData(msg) {
     assertLength(msg, 6);
@@ -126,6 +140,7 @@ function readNumberBytes(arr, idx, length) {
     return sum;
 }
 function decodeAnyMessage(msg) {
+    assertProtocol(msg);
     var type = getType(msg);
     switch (type) {
         case MessageType.SINGLE:

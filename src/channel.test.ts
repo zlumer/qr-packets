@@ -1,0 +1,103 @@
+import "jest-extended"
+
+import { Channel } from "./channel"
+import { IChannelChunk, MessageType } from "./converter"
+
+describe('channel basic functionality', () =>
+{
+	let barr = (...a: number[]) => new Uint8Array(a)
+	let chunk = (id: Uint8Array, inidx: number, outidx: number, chunkidx: number, payload: Uint8Array): IChannelChunk =>
+	{
+		return { id, chunkidx, inidx, outidx, payload, protocol: "QRS", type: MessageType.CHANNEL, version: 1 }
+	}
+	it('should process single chunk', () =>
+	{
+		let c = new Channel()
+		let onchunk = jest.fn()
+		c.on("chunk", onchunk)
+		c._dropChunks = jest.fn(c._dropChunks)
+		c._digestChunks = jest.fn(c._digestChunks)
+		c.processMessage(chunk(c.id.slice(), 0, 1, 1, barr(3, 14, 15, 92)))
+		expect(c._dropChunks).not.toHaveBeenCalled()
+		expect(c._digestChunks).toHaveBeenCalledTimes(1)
+		expect(onchunk).toHaveBeenCalledTimes(1)
+		expect(onchunk.mock.calls[0][0]).toEqual(barr(3, 14, 15, 92))
+		expect(c.inidx).toEqual(1)
+		expect(c.outidx).toEqual(0)
+		expect(c.chunksQueue).toBeEmpty()
+		expect(c.chunkCandidates).toBeEmpty()
+		expect(c.futureinidx).toEqual(1)
+		expect(c.lastDeliveredChunk).toBeUndefined()
+		expect(c.lastDeliveredChunkIdx).toEqual(0)
+	})
+	it('should process several chunks in order (continuosly)', () =>
+	{
+		let c = new Channel()
+		let onchunk = jest.fn()
+		c.on("chunk", onchunk)
+		c._dropChunks = jest.fn(c._dropChunks)
+		c._digestChunks = jest.fn(c._digestChunks)
+		c.processMessage(chunk(c.id.slice(), 0, 1, 1, barr(3, 14, 15, 92)))
+		c.processMessage(chunk(c.id.slice(), 0, 2, 2, barr(42, 42, 42)))
+		expect(c._dropChunks).not.toHaveBeenCalled()
+		expect(c._digestChunks).toHaveBeenCalledTimes(2)
+		expect(onchunk).toHaveBeenCalledTimes(2)
+		expect(onchunk.mock.calls[0][0]).toEqual(barr(3, 14, 15, 92))
+		expect(onchunk.mock.calls[1][0]).toEqual(barr(42, 42, 42))
+		expect(c.inidx).toEqual(2)
+		expect(c.outidx).toEqual(0)
+		expect(c.chunksQueue).toBeEmpty()
+		expect(c.chunkCandidates).toBeEmpty()
+		expect(c.futureinidx).toEqual(2)
+		expect(c.lastDeliveredChunk).toBeUndefined()
+		expect(c.lastDeliveredChunkIdx).toEqual(0)
+	})
+	it('should process several chunks in order (simultaneously)', () =>
+	{
+		let c = new Channel()
+		let onchunk = jest.fn()
+		c.on("chunk", onchunk)
+		c._dropChunks = jest.fn(c._dropChunks)
+		c._digestChunks = jest.fn(c._digestChunks)
+		c.processMessage(chunk(c.id.slice(), 0, 2, 1, barr(3, 14, 15, 92)))
+		c.processMessage(chunk(c.id.slice(), 0, 2, 2, barr(42, 42, 42)))
+		expect(c._dropChunks).not.toHaveBeenCalled()
+		expect(c._digestChunks).toHaveBeenCalledTimes(2)
+		expect(onchunk).toHaveBeenCalledTimes(2)
+		expect(onchunk.mock.calls[0][0]).toEqual(barr(3, 14, 15, 92))
+		expect(onchunk.mock.calls[1][0]).toEqual(barr(42, 42, 42))
+		expect(c.inidx).toEqual(2)
+		expect(c.outidx).toEqual(0)
+		expect(c.chunksQueue).toBeEmpty()
+		expect(c.chunkCandidates).toBeEmpty()
+		expect(c.futureinidx).toEqual(2)
+		expect(c.lastDeliveredChunk).toBeUndefined()
+		expect(c.lastDeliveredChunkIdx).toEqual(0)
+	})
+	it('should process several chunks out of order', () =>
+	{
+		let c = new Channel()
+		let onchunk = jest.fn()
+		c.on("chunk", onchunk)
+		c._dropChunks = jest.fn(c._dropChunks)
+		c._digestChunks = jest.fn(c._digestChunks)
+		c.processMessage(chunk(c.id.slice(), 0, 2, 2, barr(42, 42, 42)))
+		expect(onchunk).not.toHaveBeenCalled()
+		expect(c.chunkCandidates).not.toBeEmpty()
+		expect(c.chunkCandidates[2]).toEqual(barr(42, 42, 42))
+		expect(c.inidx).toEqual(0)
+		c.processMessage(chunk(c.id.slice(), 0, 2, 1, barr(3, 14, 15, 92)))
+		expect(c._dropChunks).not.toHaveBeenCalled()
+		expect(c._digestChunks).toHaveBeenCalledTimes(2)
+		expect(onchunk).toHaveBeenCalledTimes(2)
+		expect(onchunk.mock.calls[0][0]).toEqual(barr(3, 14, 15, 92))
+		expect(onchunk.mock.calls[1][0]).toEqual(barr(42, 42, 42))
+		expect(c.inidx).toEqual(2)
+		expect(c.outidx).toEqual(0)
+		expect(c.chunksQueue).toBeEmpty()
+		expect(c.chunkCandidates).toBeEmpty()
+		expect(c.futureinidx).toEqual(2)
+		expect(c.lastDeliveredChunk).toBeUndefined()
+		expect(c.lastDeliveredChunkIdx).toEqual(0)
+	})
+})
