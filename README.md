@@ -15,6 +15,9 @@ Advantages:
 For the sake of simplicity this whitepaper will focus on use of QR Packets in offline (cold) cryptocurrency wallets.
 :::-->
 
+## Disclaimer
+The code is **academic grade**, meant for academic peer review and evaluation. It very likely contains multiple serious security flaws, and should not be relied upon for any other purpose.
+
 ## High-level transport protocol
 This section describes protocol operation on a higher level:
 - hashing messages
