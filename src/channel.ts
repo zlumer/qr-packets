@@ -1,9 +1,10 @@
 import EventEmitter from  "wolfy87-eventemitter"
-import { splitPayload, IChannel, IChannelChunk, channelChunk, channelOpen } from "./converter"
+import { splitPayload, channelChunk } from "./converter"
+import { IChannel, IChannelChunk } from "./interfaces"
 
 export class Channel extends EventEmitter implements IChannel
 {
-	id: Uint8Array = new Uint8Array([1,2,3,4,5,6,7,8].map(x => Math.floor(Math.random() * 256)))
+	id: Uint8Array = new Uint8Array([1,2,3,4,5,6,7,8].map(x => Math.floor(Math.random() * 256))) // godlike random lol
 	outidx: number = 0
 	inidx: number = 0
 	lastDeliveredChunkIdx: number = 0

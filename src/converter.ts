@@ -1,14 +1,8 @@
 import { sha3_256 } from "js-sha3"
 import { fromByteArray, toByteArray } from "base64-js"
+import { MessageType, ISingleMessage, IMessageChunk, IChannelChunk, IDeliveryConfirmation, IChannel } from "./interfaces"
 
-export enum MessageType
-{
-	SINGLE = "s",
-	MESSAGE = "m",
-	CHANNEL = "c",
-	DELIVERY = "d",
-}
-const MessageTypes = 'smcd'.split('')
+const MessageTypes = (Object.keys(MessageType) as (keyof typeof MessageType)[]).map(key => MessageType[key])
 
 const PROTOCOL = "QRS"
 const VERSION = 1
@@ -88,12 +82,6 @@ export function channelOpen(channelId: Uint8Array): string
 {
 	return constructMessage(MessageType.CHANNEL, channelId, new Uint8Array([0, 0, 0]))
 }
-export interface IChannel
-{
-	id: Uint8Array
-	outidx: number
-	inidx: number
-}
 export function channelChunk(channel: IChannel, chunkidx: number, chunk: Uint8Array): string
 {
 	return constructMessage(
@@ -102,38 +90,6 @@ export function channelChunk(channel: IChannel, chunkidx: number, chunk: Uint8Ar
 		new Uint8Array([channel.outidx, channel.inidx, chunkidx]),
 		chunk
 	)
-}
-interface IAnyMessage<T extends MessageType>
-{
-	protocol: "QRS"
-	version: 1
-	type: T
-}
-export interface ISingleMessage extends IAnyMessage<MessageType.SINGLE>
-{
-	hash: Uint8Array
-	payload: Uint8Array
-}
-export interface IMessageChunk extends IAnyMessage<MessageType.MESSAGE>
-{
-	hash: Uint8Array
-	count: number
-	idx: number
-	payload: Uint8Array
-}
-export interface IChannelChunk extends IAnyMessage<MessageType.CHANNEL>
-{
-	id: Uint8Array
-	outidx: number
-	inidx: number
-	chunkidx: number
-	payload: Uint8Array
-}
-export interface IDeliveryConfirmation extends IAnyMessage<MessageType.DELIVERY>
-{
-	hash: Uint8Array
-	lastChunk: number
-	missed: number[]
 }
 function assertProtocol(msg: string)
 {
@@ -145,11 +101,11 @@ function assertProtocol(msg: string)
 function getType(msg: string): MessageType
 {
 	assertLength(msg, 5)
-	let t = msg[4]
+	let t = msg[4] as MessageType
 	if (MessageTypes.indexOf(t) == -1)
 		throw `unknown message type! "${t}"`
 	
-	return t as MessageType
+	return t
 }
 function assertType(msg: string, type: MessageType)
 {
