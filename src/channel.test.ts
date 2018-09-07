@@ -1,7 +1,7 @@
 import "jest-extended"
 
 import { Channel } from "./channel"
-import { IChannelChunk, MessageType } from "./converter"
+import { IChannelChunk, MessageType } from "./interfaces"
 
 describe('channel basic functionality', () =>
 {

@@ -1,5 +1,6 @@
 import "jest-extended"
-import { singleMessage, decodeSingleMessage, multiMessage, decodeMessageChunk, IMessageChunk, bhash8 } from "./converter"
+import { singleMessage, decodeSingleMessage, multiMessage, decodeMessageChunk, bhash8 } from "./converter"
+import { IMessageChunk } from "./interfaces"
 
 describe("ecnoding/decoding", () =>
 {
