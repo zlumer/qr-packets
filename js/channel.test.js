@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 require("jest-extended");
 var channel_1 = require("./channel");
-var converter_1 = require("./converter");
+var interfaces_1 = require("./interfaces");
 describe('channel basic functionality', function () {
     var barr = function () {
         var a = [];
@@ -12,7 +12,7 @@ describe('channel basic functionality', function () {
         return new Uint8Array(a);
     };
     var chunk = function (id, inidx, outidx, chunkidx, payload) {
-        return { id: id, chunkidx: chunkidx, inidx: inidx, outidx: outidx, payload: payload, protocol: "QRS", type: converter_1.MessageType.CHANNEL, version: 1 };
+        return { id: id, chunkidx: chunkidx, inidx: inidx, outidx: outidx, payload: payload, protocol: "QRS", type: interfaces_1.MessageType.CHANNEL, version: 1 };
     };
     it('should process single chunk', function () {
         var c = new channel_1.Channel();

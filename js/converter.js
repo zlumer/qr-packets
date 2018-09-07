@@ -2,14 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var js_sha3_1 = require("js-sha3");
 var base64_js_1 = require("base64-js");
-var MessageType;
-(function (MessageType) {
-    MessageType["SINGLE"] = "s";
-    MessageType["MESSAGE"] = "m";
-    MessageType["CHANNEL"] = "c";
-    MessageType["DELIVERY"] = "d";
-})(MessageType = exports.MessageType || (exports.MessageType = {}));
-var MessageTypes = 'smcd'.split('');
+var interfaces_1 = require("./interfaces");
+var MessageTypes = Object.keys(interfaces_1.MessageType).map(function (key) { return interfaces_1.MessageType[key]; });
 var PROTOCOL = "QRS";
 var VERSION = 1;
 function mergeArrays() {
@@ -51,12 +45,12 @@ function constructMessage(type) {
 }
 function singleMessage(payload) {
     var hash = bhash8(payload);
-    return constructMessage(MessageType.SINGLE, hash, payload);
+    return constructMessage(interfaces_1.MessageType.SINGLE, hash, payload);
 }
 exports.singleMessage = singleMessage;
 function multiMessage(chunks) {
     var hash = bhash8(mergeArrays.apply(void 0, chunks));
-    return chunks.map(function (chunk, idx) { return constructMessage(MessageType.MESSAGE, hash, numberToBytes(chunks.length), numberToBytes(idx), chunk); });
+    return chunks.map(function (chunk, idx) { return constructMessage(interfaces_1.MessageType.MESSAGE, hash, numberToBytes(chunks.length), numberToBytes(idx), chunk); });
 }
 exports.multiMessage = multiMessage;
 function splitPayload(payload, CHUNK_LENGTH) {
@@ -78,15 +72,15 @@ function autoMessage(payload) {
 }
 exports.autoMessage = autoMessage;
 function deliveryConfirmation(mhash, lastChunk, missed) {
-    return constructMessage.apply(void 0, [MessageType.DELIVERY, mhash, numberToBytes(lastChunk)].concat(missed.map(numberToBytes)));
+    return constructMessage.apply(void 0, [interfaces_1.MessageType.DELIVERY, mhash, numberToBytes(lastChunk)].concat(missed.map(numberToBytes)));
 }
 exports.deliveryConfirmation = deliveryConfirmation;
 function channelOpen(channelId) {
-    return constructMessage(MessageType.CHANNEL, channelId, new Uint8Array([0, 0, 0]));
+    return constructMessage(interfaces_1.MessageType.CHANNEL, channelId, new Uint8Array([0, 0, 0]));
 }
 exports.channelOpen = channelOpen;
 function channelChunk(channel, chunkidx, chunk) {
-    return constructMessage(MessageType.CHANNEL, channel.id, new Uint8Array([channel.outidx, channel.inidx, chunkidx]), chunk);
+    return constructMessage(interfaces_1.MessageType.CHANNEL, channel.id, new Uint8Array([channel.outidx, channel.inidx, chunkidx]), chunk);
 }
 exports.channelChunk = channelChunk;
 function assertProtocol(msg) {
@@ -148,19 +142,19 @@ function decodeAnyMessage(msg) {
     assertProtocol(msg);
     var type = getType(msg);
     switch (type) {
-        case MessageType.SINGLE:
+        case interfaces_1.MessageType.SINGLE:
             return decodeSingleMessage(msg);
-        case MessageType.MESSAGE:
+        case interfaces_1.MessageType.MESSAGE:
             return decodeMessageChunk(msg);
-        case MessageType.CHANNEL:
+        case interfaces_1.MessageType.CHANNEL:
             return decodeChannelChunk(msg);
-        case MessageType.DELIVERY:
+        case interfaces_1.MessageType.DELIVERY:
             return decodeDeliveryConfirmation(msg);
     }
 }
 exports.decodeAnyMessage = decodeAnyMessage;
 function decodeSingleMessage(msg) {
-    assertType(msg, MessageType.SINGLE);
+    assertType(msg, interfaces_1.MessageType.SINGLE);
     assertDataLength(msg, 8 /*hash*/ + 1 /*data*/);
     var b64 = extractData(msg);
     var hash = b64.slice(0, 8);
@@ -169,14 +163,14 @@ function decodeSingleMessage(msg) {
     return {
         protocol: PROTOCOL,
         version: VERSION,
-        type: MessageType.SINGLE,
+        type: interfaces_1.MessageType.SINGLE,
         hash: hash,
         payload: payload
     };
 }
 exports.decodeSingleMessage = decodeSingleMessage;
 function decodeMessageChunk(msg) {
-    assertType(msg, MessageType.MESSAGE);
+    assertType(msg, interfaces_1.MessageType.MESSAGE);
     assertDataLength(msg, 8 /*hash*/ + 2 /*idxs*/ + 1 /*data*/);
     var b64 = extractData(msg);
     var hash = b64.subarray(0, 8);
@@ -186,7 +180,7 @@ function decodeMessageChunk(msg) {
     return {
         protocol: "QRS",
         version: 1,
-        type: MessageType.MESSAGE,
+        type: interfaces_1.MessageType.MESSAGE,
         hash: hash,
         count: count,
         idx: idx,
@@ -195,7 +189,7 @@ function decodeMessageChunk(msg) {
 }
 exports.decodeMessageChunk = decodeMessageChunk;
 function decodeChannelChunk(msg) {
-    assertType(msg, MessageType.CHANNEL);
+    assertType(msg, interfaces_1.MessageType.CHANNEL);
     assertDataLength(msg, 8 /*id*/ + 3 /*idxs*/ + 1 /*data*/);
     var b64 = extractData(msg);
     var id = b64.subarray(0, 8);
@@ -206,7 +200,7 @@ function decodeChannelChunk(msg) {
     return {
         protocol: "QRS",
         version: 1,
-        type: MessageType.CHANNEL,
+        type: interfaces_1.MessageType.CHANNEL,
         id: id,
         outidx: outidx,
         inidx: inidx,
@@ -216,7 +210,7 @@ function decodeChannelChunk(msg) {
 }
 exports.decodeChannelChunk = decodeChannelChunk;
 function decodeDeliveryConfirmation(msg) {
-    assertType(msg, MessageType.DELIVERY);
+    assertType(msg, interfaces_1.MessageType.DELIVERY);
     assertDataLength(msg, 8 /*hash*/ + 1 /*idx*/);
     var b64 = extractData(msg);
     var hash = b64.subarray(0, 8);
@@ -231,7 +225,7 @@ function decodeDeliveryConfirmation(msg) {
     return {
         protocol: "QRS",
         version: 1,
-        type: MessageType.DELIVERY,
+        type: interfaces_1.MessageType.DELIVERY,
         hash: hash,
         lastChunk: lastChunk,
         missed: missed
